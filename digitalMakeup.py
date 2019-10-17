@@ -17,14 +17,15 @@ def main():
         face_landmarks_list = face_recognition.face_landmarks(frame,face_locations=locations)
         #顔パーツを取得できたら画像を貼り付ける
         if face_landmarks_list:
-            #顔の中心座標を求める
-            pos = (int((locations[0][1]+locations[0][3])/2),int((locations[0][0]+locations[0][2])/2))
-            #顔幅を求める
-            face_width = locations[0][1] - locations[0][3];
-            #スタンプを読み込んで大きさを取得
-            icon,icon_w,icon_h = load_icon("smile.png",face_width)
-            if is_put(pos,(w,h),(icon_w,icon_h)):
-                frame = merge_images(frame,icon,pos)
+            for face in locations:
+                #顔の中心座標を求める
+                pos = (int((face[1]+face[3])/2),int((face[0]+face[2])/2))
+                #顔幅を求める
+                face_width = face[1] - face[3];
+                #スタンプを読み込んで大きさを取得
+                icon,icon_w,icon_h = load_icon("smile.png",face_width)
+                if is_put(pos,(w,h),(icon_w,icon_h)):
+                    frame = merge_images(frame,icon,pos)
             
         #表示
         cv2.imshow('Video',frame)
