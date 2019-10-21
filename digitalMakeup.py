@@ -19,7 +19,7 @@ def main():
         if face_landmarks_list:
             for face in locations:
                 #顔の中心座標を求める
-                pos = (int((face[1]+face[3])/2),int((face[0]+face[2])/2))
+                pos = (math.ceil((face[1]+face[3])/2),math.ceil((face[0]+face[2])/2))
                 #顔幅を求める
                 face_width = face[1] - face[3];
                 #スタンプを読み込んで大きさを取得
@@ -43,11 +43,10 @@ def main():
 
 #スタンプを置けるかどうか判定する関数
 def is_put(pos,frame_size,icon_size):
-    if math.ceil(pos[0]+icon_size[0]/2) <= frame_size[0] and math.ceil(pos[0]-icon_size[0]/2) >= 0:
-        if math.ceil(pos[1]+icon_size[1]/2) <= frame_size[1] and math.ceil(pos[1]-icon_size[1]/2) >= 0:
-            return True
-    else:
-        return False
+    if math.ceil(pos[0]+icon_size[0]/2) <= frame_size[0] and math.floor(pos[0]-icon_size[0]/2) >= 0:
+        if math.ceil(pos[1]+icon_size[1]/2) <= frame_size[1] and math.floor(pos[1]-icon_size[1]/2) >= 0:
+            return True    
+    return False
 
 # アイコンを読み込む関数
 def load_icon(path, distance):
@@ -74,8 +73,8 @@ def merge_images(bg, fg_alpha,pos):
 
     f_h, f_w, _ = fg.shape # アルファ画像の高さと幅を取得
     b_h, b_w, _ = bg.shape # 背景画像の高さを幅を取得
-    s_x = int(pos[0] - f_h/2)
-    s_y = int(pos[1] - f_w/2)
+    s_x = math.floor(pos[0] - f_w/2)
+    s_y = math.floor(pos[1] - f_h/2)
     # 画像の大きさと開始座標を表示
     #print("f_w:{} f_h:{} b_w:{} b_h:{} s({}, {})".format(f_w, f_h, b_w, b_h, s_x, s_y))
 
