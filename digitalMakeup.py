@@ -8,16 +8,28 @@ from datetime import datetime
 video_capture = cv2.VideoCapture(0)
 
 #name,scale,adjでそれぞれのスタンプの情報を管理する
-#usagi,neko,apple1,apple2
-name = [[],[None,"usagi","neko","apple1","apple2"],[None,"tapi"]]
+name = [[],[None,"usagi","neko","apple1","apple2","vr","sento"],[None,"tapi","mazai"],[None,"aika","gogo"]]
 #スタンプの大きさ調整
-scale = [[],[None,1.2,1.2,1.2,1.9],[None,1.2]]
-#スタンプ位置調整
-adj = [[],[None,0.4,0.4,0.2,0],[None,0.2]]
+scale = [[],[None,1.2,1.2,1.2,1.9,1.5,3],[None,1.2,0.8],[None,1.1,1.1]]
+#y座標のスタンプ位置調整
+adj_y = [[],[None,0.4,0.4,0.2,0,-0.25,-0.4],[None,-0.2,-0.25],[None,0.2,0.8]]
+#x座標のスタンプ位置調整
+adj_x = [[],[None,0,0,0,0,0,0.35],[None,0,0],[None,-0.5,-0.5]]
 
 def main():
     #選ぶ選択の組み合わせ(初期設定) 下ひと桁が0のとき何も選ばない
-    ch = [11,21]
+    ch = [11,21,31]
+
+    print("キーボードのキーを押すと,スタンプが切り替わります.\n")
+    print("<各キーの説明>\n\n[システム]----\nQ:プログラムの終了,P:画像の保存")
+    print("----\n\n[顔全体]----\nA:顔全体スタンプの消去")
+    print("W:ウサ耳,E:ネコ耳,R:りんご1\nT:りんご2,Y:VRゴーグル,U:せんとくん\n----\n")
+    print("[口付近]----\nZ:口付近スタンプの消去")
+    print("D:タピオカ,F:モンスターエナジー\n----\n")
+    print("[右頬付近]----\nS:右頬付近のスタンプの消去")
+    print("C:I科展ふきだし,V:ゴゴゴ\n----\n")
+
+
     while True:
         #フレーム取得
         ret, frame = video_capture.read()
@@ -40,13 +52,17 @@ def main():
                         continue
                     #額付近のスタンプ
                     if i//10 == 1:
-                        iti = math.floor(face[0] - face_height*adj[i//10][i%10])
-                        pos = (math.ceil((face[3]+face[1])/2),math.ceil(iti))
+                        base = ((face[3]+face[1])/2,face[0])
                     #顎付近のスタンプ
                     elif i//10 == 2:
-                        iti = math.floor(parts["chin"][8][1] + face_height*adj[i//10][i%10])
-                        pos = (parts["chin"][8][0],math.ceil(iti))
-                    
+                        base = parts["chin"][8]
+                    #右頬付近のスタンプ
+                    elif i//10 == 3:
+                        base = parts["chin"][13]
+
+                    #スタンプを貼る中心座標を設定
+                    pos = (math.ceil(base[0] - face_width*adj_x[i//10][i%10]),
+                    math.ceil(base[1] - face_height*adj_y[i//10][i%10]))
                     #スタンプを読み込んで大きさを取得
                     icon,icon_w,icon_h = load_icon("./stamp/"+name[i//10][i%10]+".png",face_width,i)
                     if is_put(pos,(w,h),(icon_w,icon_h)):
@@ -54,45 +70,36 @@ def main():
                     #デバッグ用 貼り付ける中心座標
                     #frame = cv2.circle(frame,pos, 5, (0,0,255), -1)
             
-        #表示
+        #デスクトップに映像表示
         cv2.imshow('Video',frame)
-
-        k = cv2.waitKey(1)&0xff # キー入力を待つ
-        #簡易的な入力(キーボードから)
-        if k == ord('q'):
-            # 「q」キーが押されたら終了する
+        
+        #キーボード入力処理
+        ch = input_key(ch)
+        if ch[0] == -1:
             break
-        elif k == ord('p'):
-            # 「p」キーで画像を保存
+        elif ch[0] == -2:
             save_image(frame)
-        elif k == ord('0'):
-            #ノーマル(何も表示しない)
-            ch[0] = 10
-            ch[1] = 10
-        elif k == ord('1'):
-            #usagi
-            ch[0] = 11
-        elif k == ord('2'):
-            #neko
-            ch[0] = 12
-        elif k == ord('3'):
-            #apple1
-            ch[0] = 13
-        elif k == ord('4'):
-            #apple2
-            ch[0] = 14
-        elif k == ord('5'):
-            #額付近のスタンプを外す
-            ch[0] = 10
-        elif k == ord('6'):
-            #顎付近のスタンプを外す
-            ch[1] = 20
-        elif k == ord('7'):
-            #tapi
-            ch[1] = 21
 
     video_capture.release()
     cv2.destroyAllWindows()
+
+#キーボードの入力処理を行う関数
+def input_key(ch):
+    dic = {ord('q'):-1,ord('p'):-2,ord('a'):10,ord('z'):20,
+    ord('s'):30,ord('w'):11,ord('e'):12,ord('r'):13,ord('t'):14,
+    ord('y'):15,ord('u'):16,ord('d'):21,ord('f'):22,ord('c'):31,
+    ord('v'):32}
+
+    #キー入力を待つ
+    k = cv2.waitKey(1)&0xff 
+
+    if k in dic:
+        if dic[k] < 0:
+            ch[0] = dic[k]
+        else:
+            ch[dic[k]//10-1] = dic[k]
+    
+    return ch
 
 #スタンプを置けるかどうか判定する関数
 def is_put(pos,frame_size,icon_size):
