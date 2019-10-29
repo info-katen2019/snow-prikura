@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import math
 from datetime import datetime
+import time
 
 # Get a reference to webcam #0 (the default one)
 video_capture = cv2.VideoCapture(0)
@@ -17,6 +18,7 @@ adj_y = [[],[None,0.4,0.4,0.2,0,-0.25,-0.4],[None,-0.2,-0.25],[None,0.2,0.8]]
 adj_x = [[],[None,0,0,0,0,0,0.35],[None,0,0],[None,-0.5,-0.5]]
 
 def main():
+    global ch
     #選ぶ選択の組み合わせ(初期設定) 下ひと桁が0のとき何も選ばない
     ch = [11,21,31]
 
@@ -31,57 +33,65 @@ def main():
 
 
     while True:
-        #フレーム取得
-        ret, frame = video_capture.read()
-        #フレームの大きさを取得
-        h, w, _  = frame.shape
-        #顔パーツの座標群を取得
-        locations = face_recognition.face_locations(frame)
-        face_landmarks_list = face_recognition.face_landmarks(frame,face_locations=locations)
-
-        #顔パーツを取得できたら画像を貼り付ける
-        if face_landmarks_list:
-            #顔認識できた数だけfor文を回す
-            for face,parts in zip(locations,face_landmarks_list):
-                #顔の縦幅,横幅を求める
-                face_width = face[1] - face[3];
-                face_height = face[2] - face[0];
-                for i in ch:
-                    #スタンプを貼らないとき 下ひと桁が0のとき何も貼らない
-                    if i%10 == 0:
-                        continue
-                    #額付近のスタンプ
-                    if i//10 == 1:
-                        base = ((face[3]+face[1])/2,face[0])
-                    #顎付近のスタンプ
-                    elif i//10 == 2:
-                        base = parts["chin"][8]
-                    #右頬付近のスタンプ
-                    elif i//10 == 3:
-                        base = parts["chin"][13]
-
-                    #スタンプを貼る中心座標を設定
-                    pos = (math.ceil(base[0] - face_width*adj_x[i//10][i%10]),
-                    math.ceil(base[1] - face_height*adj_y[i//10][i%10]))
-                    #スタンプを読み込んで大きさを取得
-                    icon,icon_w,icon_h = load_icon("./stamp/"+name[i//10][i%10]+".png",face_width,i)
-                    if is_put(pos,(w,h),(icon_w,icon_h)):
-                        frame = merge_images(frame,icon,pos)
-                    #デバッグ用 貼り付ける中心座標
-                    #frame = cv2.circle(frame,pos, 5, (0,0,255), -1)
-            
-        #デスクトップに映像表示
-        cv2.imshow('Video',frame)
-        
+        #1フレーム毎に処理
+        process_frame = process()        
         #キーボード入力処理
         ch = input_key(ch)
         if ch[0] == -1:
             break
         elif ch[0] == -2:
-            save_image(frame)
-
+            save_image(process_frame)
+        #映像表示
+        cv2.imshow('Video', process_frame)
     video_capture.release()
     cv2.destroyAllWindows()
+
+
+#描画プロセス
+def process():
+    #フレーム取得
+    ret, frame = video_capture.read()
+    #フレームの大きさを取得
+    h, w, _  = frame.shape
+    #1/4サイズのフレーム（高速化用）
+    small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+    rgb_small_frame = small_frame[:, :, ::-1]
+    #顔パーツの座標群を取得
+    locations = face_recognition.face_locations(small_frame)
+    face_landmarks_list = face_recognition.face_landmarks(small_frame, face_locations=locations)
+
+    #顔パーツを取得できたら画像を貼り付ける
+    if face_landmarks_list:
+        #顔認識できた数だけfor文を回す
+        for face, parts in zip(locations, face_landmarks_list):
+            #顔の縦幅,横幅を求める
+            face_width = (face[1] - face[3]) * 4;
+            face_height = (face[2] - face[0]) * 4;
+            for i in ch:
+                base = list()
+                #スタンプを貼らないとき 下ひと桁が0のとき何も貼らない
+                if i%10 == 0:
+                    continue
+                #額付近のスタンプ
+                if i//10 == 1:
+                    base = (int((face[3]+face[1])/2), face[0])
+                #顎付近のスタンプ
+                elif i//10 == 2:
+                    base = parts["chin"][8]
+                #右頬付近のスタンプ
+                elif i//10 == 3:
+                    base = parts["chin"][13]
+                print("base = ", base)
+                #スタンプを貼る中心座標を設定
+                pos = ((base[0]*4 - face_width*adj_x[i//10][i%10]), (base[1]*4 - face_height*adj_y[i//10][i%10]))
+                #スタンプを読み込んで大きさを取得
+                icon, icon_w, icon_h = load_icon("./stamp/" + name[i//10][i%10] + ".png", face_width, i)
+                if is_put(pos, (w, h), (icon_w, icon_h)):
+                    frame = merge_images(frame, icon, pos)
+                #デバッグ用 貼り付ける中心座標
+                #frame = cv2.circle(frame,pos, 5, (0,0,255), -1)
+    #1フレームを出力
+    return frame    
 
 #キーボードの入力処理を行う関数
 def input_key(ch):
@@ -124,7 +134,7 @@ def img_resize(img, scale):
     return img
 
 # 画像を合成する関数 posは貼り付けたい中心座標
-def merge_images(bg, fg_alpha,pos):
+def merge_images(bg, fg_alpha, pos):
     alpha = fg_alpha[:,:,3]  # アルファチャンネルだけ抜き出す(要は2値のマスク画像)
     alpha = cv2.cvtColor(alpha, cv2.COLOR_GRAY2BGR) # grayをBGRに
     alpha = alpha / 255.0    # 0.0〜1.0の値に変換
@@ -149,7 +159,10 @@ def save_image(img):
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = "./" + date + ".png"
     cv2.imwrite(path, img) # ファイル保存
-
-
+'''
+def count_down(frame):
+    start = time.time()
+    while 
+'''
 if __name__ == '__main__':
     main()
