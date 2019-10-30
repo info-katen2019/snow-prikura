@@ -74,11 +74,13 @@ def main():
         cv2.imshow('Video',frame)
         
         #キーボード入力処理
+        work = ch[0]
         ch = input_key(ch)
         if ch[0] == -1:
             break
         elif ch[0] == -2:
             save_image(frame)
+            ch[0] = work
 
     video_capture.release()
     cv2.destroyAllWindows()
