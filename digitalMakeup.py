@@ -18,9 +18,9 @@ adj_y = [[],[None,0.4,0.4,0.2,0,-0.25,-0.4],[None,-0.2,-0.25],[None,0.2,0.8]]
 adj_x = [[],[None,0,0,0,0,0,0.35],[None,0,0],[None,-0.5,-0.5]]
 
 def main():
-    global ch
     #選ぶ選択の組み合わせ(初期設定) 下ひと桁が0のとき何も選ばない
     ch = [11,21,31]
+    #global ch
 
     print("キーボードのキーを押すと,スタンプが切り替わります.\n")
     print("<各キーの説明>\n\n[システム]----\nQ:プログラムの終了,P:画像の保存")
@@ -33,8 +33,9 @@ def main():
 
 
     while True:
+        ch[0] = 11
         #1フレーム毎に処理
-        process_frame = process()        
+        process_frame = process(ch)
         #キーボード入力処理
         ch = input_key(ch)
         if ch[0] == -1:
@@ -48,7 +49,7 @@ def main():
 
 
 #描画プロセス
-def process():
+def process(ch):
     #フレーム取得
     ret, frame = video_capture.read()
     #フレームの大きさを取得
@@ -59,7 +60,7 @@ def process():
     #顔パーツの座標群を取得
     locations = face_recognition.face_locations(small_frame)
     face_landmarks_list = face_recognition.face_landmarks(small_frame, face_locations=locations)
-
+    
     #顔パーツを取得できたら画像を貼り付ける
     if face_landmarks_list:
         #顔認識できた数だけfor文を回す
@@ -67,6 +68,7 @@ def process():
             #顔の縦幅,横幅を求める
             face_width = (face[1] - face[3]) * 4;
             face_height = (face[2] - face[0]) * 4;
+            print("aa",ch)
             for i in ch:
                 base = list()
                 #スタンプを貼らないとき 下ひと桁が0のとき何も貼らない
@@ -81,9 +83,9 @@ def process():
                 #右頬付近のスタンプ
                 elif i//10 == 3:
                     base = parts["chin"][13]
-                print("base = ", base)
+                print("index = ", i//10)
                 #スタンプを貼る中心座標を設定
-                pos = ((base[0]*4 - face_width*adj_x[i//10][i%10]), (base[1]*4 - face_height*adj_y[i//10][i%10]))
+                pos = (abs(base[0]*4 - face_width*adj_x[i//10][i%10]), abs(base[1]*4 - face_height*adj_y[i//10][i%10]))
                 #スタンプを読み込んで大きさを取得
                 icon, icon_w, icon_h = load_icon("./stamp/" + name[i//10][i%10] + ".png", face_width, i)
                 if is_put(pos, (w, h), (icon_w, icon_h)):
@@ -158,6 +160,7 @@ def merge_images(bg, fg_alpha, pos):
 def save_image(img):
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = "./" + date + ".png"
+    img = img_resize(img, 0.5)
     cv2.imwrite(path, img) # ファイル保存
 '''
 def count_down(frame):
