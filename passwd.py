@@ -1,10 +1,8 @@
 import secrets
 import string
 
-passwd_list = []
-
-def gen_passwd(n):
-    for i in range(1, n):
+with open("pass_list.dat", "w") as w_file:
+    for i in range(0, 5000):
         passwd = ''.join([secrets.choice(string.ascii_letters + string.digits) for i in range(8)])
-        passwd_list.append(passwd)
-    return passwd_list
+        w_file.write("ID: " + str(i) + " Pass: " + passwd + "\n")
+    

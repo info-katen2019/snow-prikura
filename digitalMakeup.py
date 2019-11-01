@@ -7,14 +7,9 @@ import time
 import multiprocessing as mp
 import os
 import subprocess
-import passwd
-
-#パスワードリスト
-passwd_list = passwd.gen_passwd(5000)
 
 # Get a reference to webcam #0 (the default one)
 video_capture = cv2.VideoCapture(0)
-
 #name,scale,adjでそれぞれのスタンプの情報を管理する
 name = [[],[None,"usagi","neko","apple1","apple2","vr","sento"],[None,"tapi","mazai"],[None,"aika","gogo"], [None, "num_1", "num_2", "num_3"]]
 #スタンプの大きさ調整
@@ -23,10 +18,26 @@ scale = [[],[None,1.2,1.2,1.2,1.9,1.5,3],[None,1.2,0.8],[None,1.1,1.1], [None, 1
 adj_y = [[],[None,0.4,0.4,0.2,0,-0.25,-0.4],[None,-0.2,-0.25],[None,0.2,0.8]]
 #x座標のスタンプ位置調整
 adj_x = [[],[None,0,0,0,0,0,0.35],[None,0,0],[None,-0.5,-0.5]]
+#パスワードリスト
+passwd_list = []
+#home directory
+home = os.path.expanduser("~")
 
 def main():
+    #入力FPS，解像度の設定
+    video_capture.set(cv2.CAP_PROP_FPS, 30)
+    video_capture.set(3, 1280)
+    video_capture.set(4, 720)
     #選ぶ選択の組み合わせ(初期設定) 下ひと桁が0のとき何も選ばない
     ch = [11,21,31]
+
+    #サーバ関連
+    
+    if(os.path.isfile(home+"/passwd") == False):
+        subprocess.call(["mkdir", home+"/passwd"])
+    if(os.path.isfile("./out") == False):
+        subprocess.call(["mkdir", "./out"])
+    read_passwd()
 
     print("キーボードのキーを押すと,スタンプが切り替わります.\n")
     print("<各キーの説明>\n\n[システム]----\nQ:プログラムの終了,P:画像の保存")
@@ -48,10 +59,6 @@ def main():
             break
         elif ch[0] == -2:
             ch[0] = ch_tmp
-            '''
-            p = mp.Process(target=count_down, args=(process_frame,))
-            p.start()
-            '''
             save_image(process_frame)
             
         #映像表示
@@ -64,6 +71,7 @@ def main():
 def process(ch):
     #フレーム取得
     ret, frame = video_capture.read()
+    frame = img_resize(frame, 2)
     #フレームの大きさを取得
     h, w, _  = frame.shape
     #1/4サイズのフレーム（高速化用）
@@ -180,12 +188,11 @@ def save_image(img):
         write_num(0)
     num = read_num() + 1
     write_num(num)
-    path = "./" + str(num) + ".png"
+    path = "./out/" + str(num) + ".png"
     img = img_resize(img, 0.5)
     cv2.imwrite(path, img) # ファイル保存
     gen_basic()
     htaccess()
-    
 
 #連番生成
 def write_num(num):
@@ -196,33 +203,35 @@ def read_num():
     with open("img_num.dat", 'r') as r_file:
         n = r_file.readline()
         return int(n)
+#パスワード読み取り
+def read_passwd():
+    with open("pass_list.dat", "r") as r_file:
+        for line_data in r_file:
+            data = line_data.split()
+            passwd_list.append(data[3])
 
 #.htpsswd生成
 def gen_basic():
     num = read_num()
-    #パスワード生成
-    #password = ''.join([secrets.choice(string.ascii_letters + string.digits) for i in range(8)])
-    password = passwd_list[num]
-    #パスワードとIDを書き込み
-    with open("pass_list.txt", "a") as w_file:
-        w_file.write("ID: "+str(num)+"  PASS: "+password+"\n")
+    passwd = passwd_list[num]
      #.htpasswdの生成   
-    subprocess.call(["htpasswd", "-c",  "-b", "/home/ryuto/"+str(num)+".htpasswd", str(num), password])
+    subprocess.call(["htpasswd", "-c",  "-b", home+"/passwd/"+str(num)+".htpasswd", str(num), passwd])
     
 #.htaccess作成    
 def htaccess():
     num = read_num()
-    with open(".htaccess", "a") as w_file:
+    mode = "w" if num == 1 else "a"
+    
+    with open(home + "/public_html/.htaccess", mode) as w_file:
         w_file.write(
             "<Files "+str(num)+".png>\n"+
-                "AuthType basic\n"+
-                "AuthUserFile /home/ryuto/"+str(num)+".htpasswd\n"+
-                "AuthName \"secret\"\n"+
-                "require valid-user\n"+
+                "\tAuthType basic\n"+
+                "\tAuthUserFile "+home+"/passwd/"+str(num)+".htpasswd\n"+
+                "\tAuthName \"snow_prikura\"\n"+
+                "\trequire valid-user\n"+
             "</Files>\n"
             )
-    subprocess.call(["cp", ".htaccess", "/home/ryuto/public_html"])
-    subprocess.call(["cp", "./"+str(num)+".png", "/home/ryuto/public_html"])
+    subprocess.call(["cp", "./out/"+str(num)+".png", home+"/public_html"])
    
 '''
 def count_down(frame):
