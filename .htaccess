@@ -1,0 +1,6 @@
+<Files 1.png>
+AuthType basic
+AuthUserFile /home/ryuto/1.htpasswd
+AuthName "secret"
+require valid-user
+</Files>

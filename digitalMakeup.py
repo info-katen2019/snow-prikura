@@ -4,14 +4,19 @@ import numpy as np
 import math
 from datetime import datetime
 import time
+import multiprocessing as mp
+import os
+import subprocess
+import secrets
+import string
 
 # Get a reference to webcam #0 (the default one)
 video_capture = cv2.VideoCapture(0)
 
 #name,scale,adjでそれぞれのスタンプの情報を管理する
-name = [[],[None,"usagi","neko","apple1","apple2","vr","sento"],[None,"tapi","mazai"],[None,"aika","gogo"]]
+name = [[],[None,"usagi","neko","apple1","apple2","vr","sento"],[None,"tapi","mazai"],[None,"aika","gogo"], [None, "num_1", "num_2", "num_3"]]
 #スタンプの大きさ調整
-scale = [[],[None,1.2,1.2,1.2,1.9,1.5,3],[None,1.2,0.8],[None,1.1,1.1]]
+scale = [[],[None,1.2,1.2,1.2,1.9,1.5,3],[None,1.2,0.8],[None,1.1,1.1], [None, 1, 1, 1]]
 #y座標のスタンプ位置調整
 adj_y = [[],[None,0.4,0.4,0.2,0,-0.25,-0.4],[None,-0.2,-0.25],[None,0.2,0.8]]
 #x座標のスタンプ位置調整
@@ -20,7 +25,6 @@ adj_x = [[],[None,0,0,0,0,0,0.35],[None,0,0],[None,-0.5,-0.5]]
 def main():
     #選ぶ選択の組み合わせ(初期設定) 下ひと桁が0のとき何も選ばない
     ch = [11,21,31]
-    #global ch
 
     print("キーボードのキーを押すと,スタンプが切り替わります.\n")
     print("<各キーの説明>\n\n[システム]----\nQ:プログラムの終了,P:画像の保存")
@@ -31,17 +35,23 @@ def main():
     print("[右頬付近]----\nS:右頬付近のスタンプの消去")
     print("C:I科展ふきだし,V:ゴゴゴ\n----\n")
 
-
     while True:
-        ch[0] = 11
         #1フレーム毎に処理
         process_frame = process(ch)
+        #1つ前のch[0]を保存
+        ch_tmp = ch[0]
         #キーボード入力処理
         ch = input_key(ch)
         if ch[0] == -1:
             break
         elif ch[0] == -2:
+            ch[0] = ch_tmp
+            '''
+            p = mp.Process(target=count_down, args=(process_frame,))
+            p.start()
+            '''
             save_image(process_frame)
+            
         #映像表示
         cv2.imshow('Video', process_frame)
     video_capture.release()
@@ -68,7 +78,7 @@ def process(ch):
             #顔の縦幅,横幅を求める
             face_width = (face[1] - face[3]) * 4;
             face_height = (face[2] - face[0]) * 4;
-            print("aa",ch)
+            #print("aa",ch)
             for i in ch:
                 base = list()
                 #スタンプを貼らないとき 下ひと桁が0のとき何も貼らない
@@ -83,7 +93,6 @@ def process(ch):
                 #右頬付近のスタンプ
                 elif i//10 == 3:
                     base = parts["chin"][13]
-                print("index = ", i//10)
                 #スタンプを貼る中心座標を設定
                 pos = (abs(base[0]*4 - face_width*adj_x[i//10][i%10]), abs(base[1]*4 - face_height*adj_y[i//10][i%10]))
                 #スタンプを読み込んで大きさを取得
@@ -129,6 +138,12 @@ def load_icon(path, distance,cho):
 
     return icon, icon_w, icon_h
 
+def load_icon_easy(path):
+    icon = cv2.imread(path, -1)
+    icon_h, icon_w  = icon.shape[:2]
+
+    return icon, icon_w, icon_h
+
 # 画像をリサイズする関数
 def img_resize(img, scale):
     h, w  = img.shape[:2]
@@ -158,14 +173,73 @@ def merge_images(bg, fg_alpha, pos):
 
 # 画像を保存する関数
 def save_image(img):
-    date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = "./" + date + ".png"
+    #1番目
+    if(os.path.isfile("img_num.dat") == False):
+        write_num(0)
+    num = read_num() + 1
+    write_num(num)
+    path = "./" + str(num) + ".png"
     img = img_resize(img, 0.5)
     cv2.imwrite(path, img) # ファイル保存
+    gen_basic()
+    htaccess()
+    
+
+#連番生成
+def write_num(num):
+    with open("img_num.dat", 'w') as w_file:
+        w_file.write(str(num))
+#連番読み取り        
+def read_num():
+    with open("img_num.dat", 'r') as r_file:
+        n = r_file.readline()
+        return int(n)
+
+#.htpsswd生成
+def gen_basic():
+    num = read_num()
+    #パスワード生成
+    password = ''.join([secrets.choice(string.ascii_letters + string.digits) for i in range(8)])
+    #パスワードとIDを書き込み
+    with open("pass_list.txt", "a") as w_file:
+        w_file.write("ID: "+str(num)+"  PASS: "+password+"\n")
+     #.htpasswdの生成   
+    subprocess.call(["htpasswd", "-c",  "-b", "/home/ryuto/"+str(num)+".htpasswd", str(num), password])
+    
+#.htaccess作成    
+def htaccess():
+    num = read_num()
+    with open(".htaccess", "a") as w_file:
+        w_file.write(
+            "<Files "+str(num)+".png>\n"+
+                "AuthType basic\n"+
+                "AuthUserFile /home/ryuto/"+str(num)+".htpasswd\n"+
+                "AuthName \"secret\"\n"+
+                "require valid-user\n"+
+            "</Files>\n"
+            )
+    subprocess.call(["cp", ".htaccess", "/home/ryuto/public_html"])
+    subprocess.call(["cp", "./"+str(num)+".png", "/home/ryuto/public_html"])
+   
 '''
 def count_down(frame):
     start = time.time()
-    while 
-'''
+    while True:
+        t = time.time() - start
+        if t >= 1 and t < 2:
+            icon, icon_w, icon_h = load_icon_easy("./stamp/" + name[4][3] + ".png")
+            pos = (int(icon_w/2), int(icon_h/2))
+            merge_images(frame, icon, pos)
+        elif t >= 2 and t < 3:
+            icon, icon_w, icon_h = load_icon_easy("./stamp/" + name[4][2] + ".png")
+            pos = (int(icon_w/2), int(icon_h/2))
+            merge_images(frame, icon, pos)
+        elif t >= 3 :
+            icon, icon_w, icon_h = load_icon_easy("./stamp/" + name[4][1] + ".png")
+            pos = (int(icon_w/2), int(icon_h/2))
+            merge_images(frame, icon, pos)
+            break
+'''    
+
 if __name__ == '__main__':
     main()
