@@ -7,8 +7,10 @@ import time
 import multiprocessing as mp
 import os
 import subprocess
-import secrets
-import string
+import passwd
+
+#パスワードリスト
+passwd_list = passwd.gen_passwd(5000)
 
 # Get a reference to webcam #0 (the default one)
 video_capture = cv2.VideoCapture(0)
@@ -199,7 +201,8 @@ def read_num():
 def gen_basic():
     num = read_num()
     #パスワード生成
-    password = ''.join([secrets.choice(string.ascii_letters + string.digits) for i in range(8)])
+    #password = ''.join([secrets.choice(string.ascii_letters + string.digits) for i in range(8)])
+    password = passwd_list[num]
     #パスワードとIDを書き込み
     with open("pass_list.txt", "a") as w_file:
         w_file.write("ID: "+str(num)+"  PASS: "+password+"\n")
