@@ -32,7 +32,7 @@ def main():
     ch = [11,21,31]
 
     #サーバ関連
-    
+
     if(os.path.isfile(home+"/passwd") == False):
         subprocess.call(["mkdir", home+"/passwd"])
     if(os.path.isfile("./out") == False):
@@ -54,13 +54,14 @@ def main():
         #1つ前のch[0]を保存
         ch_tmp = ch[0]
         #キーボード入力処理
+        work = ch[0]
         ch = input_key(ch)
         if ch[0] == -1:
             break
         elif ch[0] == -2:
             ch[0] = ch_tmp
             save_image(process_frame)
-            
+
         #映像表示
         cv2.imshow('Video', process_frame)
     video_capture.release()
@@ -80,7 +81,7 @@ def process(ch):
     #顔パーツの座標群を取得
     locations = face_recognition.face_locations(small_frame)
     face_landmarks_list = face_recognition.face_landmarks(small_frame, face_locations=locations)
-    
+
     #顔パーツを取得できたら画像を貼り付ける
     if face_landmarks_list:
         #顔認識できた数だけfor文を回す
@@ -112,7 +113,7 @@ def process(ch):
                 #デバッグ用 貼り付ける中心座標
                 #frame = cv2.circle(frame,pos, 5, (0,0,255), -1)
     #1フレームを出力
-    return frame    
+    return frame
 
 #キーボードの入力処理を行う関数
 def input_key(ch):
@@ -122,21 +123,21 @@ def input_key(ch):
     ord('v'):32}
 
     #キー入力を待つ
-    k = cv2.waitKey(1)&0xff 
+    k = cv2.waitKey(1)&0xff
 
     if k in dic:
         if dic[k] < 0:
             ch[0] = dic[k]
         else:
             ch[dic[k]//10-1] = dic[k]
-    
+
     return ch
 
 #スタンプを置けるかどうか判定する関数
 def is_put(pos,frame_size,icon_size):
     if math.ceil(pos[0]+icon_size[0]/2) <= frame_size[0] and math.floor(pos[0]-icon_size[0]/2) >= 0:
         if math.ceil(pos[1]+icon_size[1]/2) <= frame_size[1] and math.floor(pos[1]-icon_size[1]/2) >= 0:
-            return True    
+            return True
     return False
 
 # アイコンを読み込む関数
@@ -198,7 +199,7 @@ def save_image(img):
 def write_num(num):
     with open("img_num.dat", 'w') as w_file:
         w_file.write(str(num))
-#連番読み取り        
+#連番読み取り
 def read_num():
     with open("img_num.dat", 'r') as r_file:
         n = r_file.readline()
@@ -214,14 +215,14 @@ def read_passwd():
 def gen_basic():
     num = read_num()
     passwd = passwd_list[num]
-     #.htpasswdの生成   
+     #.htpasswdの生成
     subprocess.call(["htpasswd", "-c",  "-b", home+"/passwd/"+str(num)+".htpasswd", str(num), passwd])
-    
-#.htaccess作成    
+
+#.htaccess作成
 def htaccess():
     num = read_num()
     mode = "w" if num == 1 else "a"
-    
+
     with open(home + "/public_html/.htaccess", mode) as w_file:
         w_file.write(
             "<Files "+str(num)+".png>\n"+
@@ -232,7 +233,7 @@ def htaccess():
             "</Files>\n"
             )
     subprocess.call(["cp", "./out/"+str(num)+".png", home+"/public_html"])
-   
+
 '''
 def count_down(frame):
     start = time.time()
@@ -251,7 +252,7 @@ def count_down(frame):
             pos = (int(icon_w/2), int(icon_h/2))
             merge_images(frame, icon, pos)
             break
-'''    
+'''
 
 if __name__ == '__main__':
     main()
