@@ -30,4 +30,6 @@ face_recognationを使う。
 ## 参考文献
 1. [face_recognition](https://github.com/ageitgey/face_recognition)
 2. [顔を認識して笑い男画像をリアルタイムで貼り付ける](http://rikoubou.hatenablog.com/entry/2019/05/15/172615)
-3. [背景画像にアルファ画像を合成する方法](http://rikoubou.hatenablog.com/entry/2019/05/14/145503)
+3. [背景画像にアルファ画像を合成する方法](http://rikoubou.hatenablog.com/entry/2019/05/14/145503)  
+## 改善案
+* 写真が暗かったので、フラッシュをつける。
